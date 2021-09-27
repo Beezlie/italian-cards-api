@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/socket/index.js"],"names":["default","socket"],"mappings":"AAAA,SAASA,OAAO,IAAIC,MAApB,QAAkC,uBAAlC","sourcesContent":["export { default as socket } from './socketController.js';"],"file":"index.js"}
