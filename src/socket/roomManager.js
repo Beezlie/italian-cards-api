@@ -3,6 +3,7 @@ import consola from 'consola';
 import { Server, Socket } from 'socket.io';
 import { Adapter } from 'socket.io-adapter';
 
+import ScopaGame from './scopaGame.js';
 import { config } from '../config.js';
 
 const { SALT_ROUNDS, DEFAULT_MAX_PLAYERS, DEFAULT_MAX_TIMER } = config;
@@ -107,16 +108,7 @@ export default class Room {
             this.socket.emit('Error: Room already created. Join the room!');
             return false;
         }
-    }
 
-    /**
-     * Broadcast info about all players and their ready status joined to given room. Deafult status as 'Not ready'.
-     *
-     * @access    public
-     */
-    showPlayers() {
-        const { clients } = this.store;
-        this.io.to(this.roomId).emit('show-players-joined', { playersJoined: clients });
     }
 
     /**
@@ -130,41 +122,55 @@ export default class Room {
     }
 
     /**
-     * Mark player as ready  ---> to start the draft in the given room. If all players ready then initiate the draft
+     * Mark player as ready  ---> to start the game in the given room. If all players ready then initiate the game
      *
      * @access public
      */
     isReady() {
-        this.socket.on('is-ready', () => {
+        this.socket.on('player-ready', () => {
             for (const player of this.store.clients) {
                 if (player.id === this.socket.id) {
                     player.isReady = true;
                 }
             }
 
-            this.showPlayers();
-
             const arePlayersReady = this.store.clients.every(player => player.isReady === true);
             if (arePlayersReady) {
-                this.beginDraft();
+                const game = new ScopaGame({
+                    io: this.io,
+                    socket: this.socket,
+                    roomId: this.roomId,
+                });
+                game.startGame();
+                game.listenForPlayerMove();
             }
         });
     }
 
     /**
-       * Send a message in the game lobby chat
-       *
-       * @access public
-       */
-      sendChatMessage() {
+    * Send a message in the game lobby chat
+    *
+    * @access public
+    */
+    sendChatMessage() {
         this.socket.on('send-chat-message', (message) => {
-          consola.info(`[CHAT MESSAGE] ${message}`);
-          const payload = {
-            username: this.socket.username,
-            text: message,
-          };
-          this.io.to(this.roomId).emit('update-chat', payload);
+            consola.info(`[CHAT MESSAGE] ${message}`);
+            const payload = {
+                username: this.socket.username,
+                text: message,
+            };
+            this.io.to(this.roomId).emit('update-chat', payload);
         });
+    }
+
+    /**
+    * Broadcast when a player joins a room
+    *
+    * @access    public
+    */
+    playerConnected() {
+        consola.info(`[PLAYER CONNECTED] ${this.socket.username}`);
+        this.io.to(this.roomId).emit('player-connected', this.socket.username);
     }
 
     /**
@@ -174,7 +180,6 @@ export default class Room {
      */
     beginDraft() {
         this.store.clients = this.shufflePlayers(this.store.clients);
-        this.showPlayers();
         this.io.to(this.roomId).emit('draft-start', 'The players order is shuffled and the draft has started...');
         consola.info('Draft started...');
 
@@ -306,7 +311,6 @@ export default class Room {
         this.socket.on('disconnect', () => {
             try {
                 this.store.clients = this.store.clients.filter(player => player.id !== this.socket.id);
-                this.showPlayers();
 
                 // Handle game reset
                 this._resetTimeOut();

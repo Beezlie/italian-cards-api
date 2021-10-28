@@ -10,47 +10,47 @@ import { fixedOrigin } from './corsFixer.js';
 const { ALLOWLIST_HOSTS, REDIS_PORT, REDIS_HOST } = config;
 
 const app = app => {
-    const io = new Server(app, {
-        transports: ['websocket'], // To avoid sticky sessions when using multiple servers
-        path: '/classic-mode',
-        cors: fixedOrigin(ALLOWLIST_HOSTS),
-        rememberUpgrade: true,
-    });
+	const io = new Server(app, {
+		transports: ['websocket'], // To avoid sticky sessions when using multiple servers
+		path: '/classic-mode',
+		cors: fixedOrigin(ALLOWLIST_HOSTS),
+		rememberUpgrade: true,
+	});
 
-    try {
-        const adapter = redisAdapter({ host: REDIS_HOST, port: Number(REDIS_PORT) });
-        io.adapter(adapter);
-    } catch (error) {
-        consola.warn('Start redis docker container using `docker-compose up`');
-        consola.warn(error);
-    }
+	try {
+		const adapter = redisAdapter({ host: REDIS_HOST, port: Number(REDIS_PORT) });
+		io.adapter(adapter);
+	} catch (error) {
+		consola.warn('Start redis docker container using `docker-compose up`');
+		consola.warn(error);
+	}
 
-    consola.info('Socketio initialised!');
+	consola.info('Socketio initialised!');
 
-    const classicMode = io.of('/classic-mode');
-    classicMode.use(verifySocket).on('connection', async socket => {
-        const { username, roomId, password, action, options } = socket.handshake.query;
-        const room = new Room({ io: classicMode, socket, username, roomId, password, action, options });
-        const joinedRoom = await room.init(username);
-        if (joinedRoom) {
-            room.showPlayers();
-            room.isReady();
-            room.sendChatMessage();
-            room.shiftTurn();
-        }
+	const classicMode = io.of('/classic-mode');
+	classicMode.use(verifySocket).on('connection', async socket => {
+		const { username, roomId, password, action, options } = socket.handshake.query;
+		const room = new Room({ io: classicMode, socket, username, roomId, password, action, options });
+		const joinedRoom = await room.init(username);
+		if (joinedRoom) {
+			room.isReady();
+			room.sendChatMessage();
+			room.playerConnected();
+			room.shiftTurn();
+		}
 
-        room.onDisconnect();
-    });
+		room.onDisconnect();
+	});
 
-    return io;
+	return io;
 };
 
 const verifySocket = (socket, next) => {
-    if (socket.handshake.query && socket.handshake.query.token) {
-        const decoded = verifyToken(socket.handshake.query.token);
-        socket.decoded = decoded;
-        next();
-    }
+	if (socket.handshake.query && socket.handshake.query.token) {
+		const decoded = verifyToken(socket.handshake.query.token);
+		socket.decoded = decoded;
+		next();
+	}
 };
 
 export default app;
