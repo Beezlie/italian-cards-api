@@ -93,6 +93,13 @@ export default class Room {
                 }
 
                 this.store.clients = [{ id: this.socket.id, username, isReady: false }];
+                this.store.players = [];
+                this.store.gameStarted = false;
+                this.store.game = new ScopaGame({
+                    io: this.io,
+                    socket: this.socket,
+                    roomId: this.roomId,
+                });
 
                 this.socket.username = username;
                 consola.info(`[CREATE] Client created and joined room ${this.roomId}`);
@@ -111,14 +118,10 @@ export default class Room {
 
     }
 
-    /**
-     * Broadcast Array of Teams [player_socket_id: [playerId1, playerId2]].
-     *
-     * @access    public
-     */
-    showTeams() {
-        const { teams } = this.store.draft;
-        this.io.to(this.roomId).emit('show-players-teams', { teams });
+    listenForPlayerMoves() {
+        this.socket.on('send-player-move', (data) => {
+            this.store.game.handlePlayerMove(this.socket.id, data);
+        });
     }
 
     /**
@@ -135,14 +138,24 @@ export default class Room {
             }
 
             const arePlayersReady = this.store.clients.every(player => player.isReady === true);
-            if (arePlayersReady) {
-                const game = new ScopaGame({
-                    io: this.io,
-                    socket: this.socket,
-                    roomId: this.roomId,
-                });
-                game.startGame();
-                game.listenForPlayerMove();
+            if (arePlayersReady && !this.store.gameStarted) {
+                this.store.gameStarted = true;
+                for (let i = 0; i < this.store.clients.length; i++) {
+                    const player = this.store.clients[i];
+                    this.store.players.push({
+                        id: player.id,
+                        name: player.username,
+                        team: i % 2,
+                    });
+                }
+                if (this.store.players.length === 1) {
+                    this.store.players.push({
+                        id: 'cpu',
+                        name: 'cpu',
+                        team: 1,
+                    });
+                }
+                this.store.game.startGame();
             }
         });
     }

@@ -11,7 +11,7 @@ function getDefault(value, defaultValue) {
 }
 
 const productionHosts = [];
-const devHosts = ['http://localhost:3000', 'http://192.168.1.122:3000'];
+const devHosts = ['http://localhost:3000', 'http://192.168.1.131:3000'];
 
 export const config = {
     IS_DEVELOPMENT: getDefault(process.env.NODE_ENV, 'development') !== 'production',

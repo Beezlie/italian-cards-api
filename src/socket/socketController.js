@@ -34,9 +34,8 @@ const app = app => {
 		const joinedRoom = await room.init(username);
 		if (joinedRoom) {
 			room.isReady();
-			room.sendChatMessage();
-			room.playerConnected();
-			room.shiftTurn();
+            room.sendChatMessage();
+            room.listenForPlayerMoves();
 		}
 
 		room.onDisconnect();
