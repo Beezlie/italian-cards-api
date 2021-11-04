@@ -1,6 +1,8 @@
 import { Server, Socket } from 'socket.io';
 import { Adapter } from 'socket.io-adapter';
 
+import { findHighestScoringMove } from '../services/scopaService.js';
+
 export default class ScopaGame {
 
     constructor(options) {
@@ -24,18 +26,17 @@ export default class ScopaGame {
 
     initializeScore() {
         this.store.scores = [];
-        const score = {
-            teamScore: 0,
-            roundScore: {
-                cards: 0,
-                setteBello: 0,
-                dinare: 0,
-                sevens: 0,
-                scopa: 0,
-            }
-        }
         for (let i = 0; i < 2; i++) {
-            this.store.scores.push(score);
+            this.store.scores.push({
+                teamScore: 0,
+                roundScore: {
+                    cards: 0,
+                    setteBello: 0,
+                    dinare: 0,
+                    sevens: 0,
+                    scopa: 0,
+                }
+            });
         }
     }
 
@@ -46,7 +47,7 @@ export default class ScopaGame {
 
         // Create card deck
         let cards = [];
-        for (const x of Array(9).keys()) {
+        for (const x of Array(10).keys()) {
             cards.push("s" + (x + 1));
             cards.push("d" + (x + 1));
             cards.push("c" + (x + 1));
@@ -56,26 +57,25 @@ export default class ScopaGame {
 
         // Send each player their cards, team and turn
         this.store.tableCards = cards.slice(0, 4);
-        for (let i = 1; i <= this.store.players.length; i++) {
-            const player = this.store.players[i - 1];
-            //TODO - store each player's cards
+        consola.info(`[DECK BEFORE DEAL: COUNT=[${cards.length}], CARDS=[${cards}]]`);
+        for (let i = 0; i < this.store.players.length; i++) {
+            const player = this.store.players[i];
+
+            //TODO - store each player's cards in a neater way
+            this.store.players[i].cards = cards.slice(4 + 3 * i, 4 + 3 * (i + 1));
+
             const data = {
                 tableCards: this.store.tableCards,
-                playerHand: cards.slice(4 * i, 4 * (i + 1)),
+                playerHand: cards.slice(4 + 3 * i, 4 + 3 * (i + 1)),
                 scores: this.store.scores,
                 team: player.team,
-                isPlayerTurn: i === 1,
+                isPlayerTurn: i === 0,
             };
-            if (i === this.store.players.length) {
-                this.store.deck = cards.slice(4 * (i + 1), cards.length);
-            }
-            consola.info(`[PLAYER ${player.id}]`);
             consola.info(data);
-            if (player.id !== 'cpu') {
-                this.io.to(player.id).emit('start-round', data);
-            }
+            this.emitDataToPlayer('start-round', data, player.id);
         }
-        this.store.numTurnsLeftThisRound = this.store.players.length * 4;
+        this.store.deck = cards.slice(4 + 3 * this.store.players.length, cards.length);
+        consola.info(`[DECK AFTER DEAL: COUNT=[${this.store.deck.length}], CARDS=[${this.store.deck}]]`);
     }
 
     shuffle(array) {
@@ -106,53 +106,111 @@ export default class ScopaGame {
         const nextPlayer = this.store.players[1];
 
         this.rotatePlayerTurn();
-        this.updateRound(player, data);
-        if (this.store.numTurnsLeftThisRound === 0) {
-            // Round is complete - start new round
-            this.updateScoresForNewRound();
-            this.startGameRound();
+        this.updateRound(player, data.playerCard, data.cardsPickedUp);
+        const playersWithCards = this.store.players.filter(function (player) {
+            return player.cards.length !== 0;
+        });
+        if (playersWithCards.length === 0) {
+            this.redistributeCards();
         }
 
         if (nextPlayer.id === 'cpu') {
-            consola.info(`[CPU TURN]`);
-            //TODO - need to get all the available moves for the cpu
-            // Then pick the best one based on some heuristic
-            let availableMoves = [];
+            this.handleCPUMove(nextPlayer);
+        }
+    }
+
+    handleCPUMove(cpuPlayer) {
+        consola.info(`[CPU TURN]`);
+        let bestMove = findHighestScoringMove(this.store.tableCards, cpuPlayer.cards);
+        if (Object.keys(bestMove).length === 0) {
+            bestMove = {
+                card: cpuPlayer.cards[0],
+                matches: [],
+            };
+        }
+        consola.info(`[CPU CARDS ${cpuPlayer.cards}]`);
+        consola.info(`[AVAILABLE CARDS ${this.store.tableCards}]`);
+        consola.info(`[CPU PLAYED ${bestMove.card} AND TOOK CARDS ${bestMove.matches}]`);
+        this.rotatePlayerTurn();
+        this.updateRound(cpuPlayer, bestMove.card, bestMove.matches);
+        const playersWithCards = this.store.players.filter(function (player) {
+            return player.cards.length !== 0;
+        });
+        if (playersWithCards.length === 0) {
+            this.redistributeCards();
         }
     }
 
     rotatePlayerTurn() {
-        this.store.numTurnsLeftThisRound -= 1;
         const lastTurnPlayer = this.store.players.shift();
         this.store.players.push(lastTurnPlayer);
-        consola.info(`[NUM TURNS LEFT: ${this.store.numTurnsLeftThisRound}]`);
         consola.info(`[NEXT PLAYER TURN: ${this.store.players[0].id}]`);
     }
 
-    updateRound(player, data) {
-        if (data.cardsPickedUp.length) {
+    updateRound(player, playerCard, cardsPickedUp) {
+        // Remove played card from player hand
+        player.cards = player.cards.filter(card => card !== playerCard);
+
+        if (cardsPickedUp.length) {
             // Player is taking cards from the table
-            const playerCards = [...data.cardsPickedUp, data.playerCard];
+            this.store.lastPlayerToTakeCards = player;
+            const playerCards = [...cardsPickedUp, playerCard];
             this.store.tableCards = this.store.tableCards.filter(function (card) {
                 return playerCards.indexOf(card) < 0;
             });
             this.updateRoundScore(player.team, playerCards, this.store.tableCards);
         } else {
             // Player is adding a card from their hand to the table
-            this.store.tableCards = [...this.store.tableCards, data.playerCard];
+            this.store.tableCards = [...this.store.tableCards, playerCard];
         }
 
         for (const player of this.store.players) {
-            const payload = {
+            const data = {
                 tableCards: this.store.tableCards,
+                playerCard: playerCard,
+                cardsPickedUp: cardsPickedUp,
                 scores: this.store.scores,
-                isPlayerTurn: this.store.players[0] === player.id,
+                isPlayerTurn: this.store.players[0].id === player.id,
             };
-            consola.info(`[UPDATING GAME FOR PLAYER: ${player.id}]`);
-            consola.info(payload);
-            if (player.id !== 'cpu') {
-                this.io.to(player.id).emit('update-game', payload);
+            this.emitDataToPlayer('update-after-turn', data, player.id);
+        }
+    }
+
+    redistributeCards() {
+        // Give rest of table cards to last user who picked up cards
+        // TODO - this needs to be cleaned/refactored since it doesn't really fit in with the method name
+        this.updateRoundScore(this.store.lastPlayerToTakeCards.team, this.store.tableCards, this.store.tableCards);
+
+        if (this.store.deck.length === 0) {
+            // Round is complete - start new round
+            this.updateScoresForNewRound();
+            this.startGameRound();
+        } else {
+            // Deal players cards from deck
+            consola.info(`[DECK BEFORE DEAL: COUNT=[${this.store.deck.length}], CARDS=[${this.store.deck}]]`);
+            for (let i = 0; i < this.store.players.length; i++) {
+                const player = this.store.players[i];
+                //TODO - reafctor this dealing code to merge it with the dealing code at start of game
+                this.store.players[i].cards = this.store.deck.slice(3 * i, 3 * (i + 1));
+
+                const data = {
+                    tableCards: this.store.tableCards,
+                    playerHand: this.store.deck.slice(3 * i, 3 * (i + 1)),
+                    scores: this.store.scores,
+                    team: player.team,
+                    isPlayerTurn: i === 0,
+                };
+                this.emitDataToPlayer('start-round', data, player.id);
             }
+            this.store.deck = this.store.deck.slice(3 * this.store.players.length, this.store.deck.length);
+            consola.info(`[DECK AFTEER DEAL: COUNT=[${this.store.deck.length}], CARDS=[${this.store.deck}]]`);
+        }
+    }
+
+    emitDataToPlayer(eventName, data, playerId) {
+        consola.info(`[SENDING DATA TO PLAYER ${playerId} FOR EVENT ${eventName}]`);
+        if (playerId !== 'cpu') {
+            this.io.to(playerId).emit(eventName, data);
         }
     }
 
@@ -171,9 +229,9 @@ export default class ScopaGame {
             if (card.startsWith('d')) {
                 score.dinare++;
             }
-            if (remainingCards.length === 0) {
-                score.scopa++;
-            }
+        }
+        if (remainingCards.length === 0) {
+            score.scopa++;
         }
         consola.info(this.store.scores);
         this.store.scores[team].roundScore = score;
@@ -215,8 +273,8 @@ export default class ScopaGame {
         totalScoreSecondTeam += roundScoreSecondTeam.scopa;
 
         // Update team score
-        this.store.scores[0].teamScore = totalScoreFirstTeam;
-        this.store.scores[1].teamScore = totalScoreSecondTeam;
+        this.store.scores[0].teamScore += totalScoreFirstTeam;
+        this.store.scores[1].teamScore += totalScoreSecondTeam;
 
         // Reset round score
         for (let i = 0; i < this.store.scores.length; i++) {

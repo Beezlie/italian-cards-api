@@ -1,4 +1,4 @@
-import { findAllSubsets } from '../services/scopaService';
+import { findAllMatchingCards } from '../services/scopaService';
 
 const gameController = {
     getMatchingCardSets: (request, response) => {
@@ -7,7 +7,7 @@ const gameController = {
         }
 
         const { arr, target } = request.body;
-        let result = findAllSubsets(arr, target);
+        let result = findAllMatchingCards(arr, target);
 
         return response.json({ success: true, result });
     },
