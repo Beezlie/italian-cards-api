@@ -170,7 +170,8 @@ export default class Room {
             consola.info(`[CHAT MESSAGE] ${message}`);
             const payload = {
                 username: this.socket.username,
-                text: message,
+                type: message.type,
+                data: message.data,
             };
             this.io.to(this.roomId).emit('update-chat', payload);
         });

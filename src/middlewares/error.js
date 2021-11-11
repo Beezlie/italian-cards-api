@@ -7,6 +7,7 @@ export class ErrorHandler extends Error {
 }
 
 export const handleError = (error, response) => {
+    consola.info(error);
     const { statusCode, message } = error;
     response.status(statusCode).json({
         status: 'error',

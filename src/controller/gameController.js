@@ -1,4 +1,4 @@
-import { findAllMatchingCards } from '../services/scopaService';
+import { findAllMatchingCards } from '../services/scopaService.js';
 
 const gameController = {
     getMatchingCardSets: (request, response) => {
@@ -6,8 +6,9 @@ const gameController = {
             throw new ErrorHandler(400, 'Invalid Request');
         }
 
-        const { arr, target } = request.body;
-        let result = findAllMatchingCards(arr, target);
+        //TODO - need to enforce the data types here and send proper error on exceptions to client
+        const { tableCards, playerCard } = request.body;
+        let result = findAllMatchingCards(tableCards, playerCard);
 
         return response.json({ success: true, result });
     },

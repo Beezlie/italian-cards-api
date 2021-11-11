@@ -2,6 +2,7 @@
 export function findHighestScoringMove(tableCards, playerCards) {
     let highestScoringMove = {};
     let bestScore = 0;
+ 
     for (const playerCard of playerCards) {
         const tableCardSum = tableCards
             .map(cardKey => getValueFromCardKey(cardKey))
@@ -35,8 +36,10 @@ export function findHighestScoringMove(tableCards, playerCards) {
     return highestScoringMove;
 }
 
-// Function to find the subsets of cards that a targt card can pick up
+// Function to find the subsets of cards that a target card can pick up
 export function findAllMatchingCards(arr, target) {
+    //This is an example of the perfect sum problem (NP hard). 
+    //Luckily our set of cards wont be large so it shouldn't take too long to find the subsets
     let result = [];
 
     // Calculate the total no. of subsets

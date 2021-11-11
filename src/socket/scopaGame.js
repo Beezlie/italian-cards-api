@@ -121,6 +121,11 @@ export default class ScopaGame {
 
     handleCPUMove(cpuPlayer) {
         consola.info(`[CPU TURN]`);
+
+        //Sleep
+        var now = new Date().getTime();
+        while (new Date().getTime() < now + 2000) { /* Do nothing */ }
+
         let bestMove = findHighestScoringMove(this.store.tableCards, cpuPlayer.cards);
         if (Object.keys(bestMove).length === 0) {
             bestMove = {
@@ -169,7 +174,6 @@ export default class ScopaGame {
                 tableCards: this.store.tableCards,
                 playerCard: playerCard,
                 cardsPickedUp: cardsPickedUp,
-                scores: this.store.scores,
                 isPlayerTurn: this.store.players[0].id === player.id,
             };
             this.emitDataToPlayer('update-after-turn', data, player.id);
@@ -179,7 +183,9 @@ export default class ScopaGame {
     redistributeCards() {
         // Give rest of table cards to last user who picked up cards
         // TODO - this needs to be cleaned/refactored since it doesn't really fit in with the method name
-        this.updateRoundScore(this.store.lastPlayerToTakeCards.team, this.store.tableCards, this.store.tableCards);
+        if (this.store.tableCards.length) {
+            this.updateRoundScore(this.store.lastPlayerToTakeCards.team, this.store.tableCards, this.store.tableCards);
+        }
 
         if (this.store.deck.length === 0) {
             // Round is complete - start new round
@@ -200,6 +206,7 @@ export default class ScopaGame {
                     team: player.team,
                     isPlayerTurn: i === 0,
                 };
+                consola.info(data);
                 this.emitDataToPlayer('start-round', data, player.id);
             }
             this.store.deck = this.store.deck.slice(3 * this.store.players.length, this.store.deck.length);
