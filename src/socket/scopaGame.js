@@ -171,8 +171,7 @@ export default class ScopaGame {
 
         for (const player of this.store.players) {
             const data = {
-                tableCards: this.store.tableCards,
-                playerCard: playerCard,
+                cardPlayed: playerCard,
                 cardsPickedUp: cardsPickedUp,
                 isPlayerTurn: this.store.players[0].id === player.id,
             };
