@@ -56,7 +56,10 @@ export function findAllMatchingCards(arr, target) {
             });
         }
     }
-    return result;
+
+    // In Scopa if a card with the same value as your card is on the table you must take it
+    const singleCardSubsets = result.filter(item => item.matches.length === 1);
+    return singleCardSubsets.length !== 0 ? singleCardSubsets : result;
 }
 
 function getValueFromCardKey(key) {
