@@ -45,7 +45,7 @@ export default class ScopaGame {
         consola.info(this.store.scores);
         consola.info(this.store.players);
 
-        // Create card deck
+        // Create card deck - 40 cards total, 10 each suit
         let cards = [];
         for (const x of Array(10).keys()) {
             cards.push("s" + (x + 1));
@@ -54,19 +54,13 @@ export default class ScopaGame {
             cards.push("b" + (x + 1));
         }
         this.shuffle(cards);
-
-        // Send each player their cards, team and turn
         this.store.tableCards = cards.slice(0, 4);
-        consola.info(`[DECK BEFORE DEAL: COUNT=[${cards.length}], CARDS=[${cards}]]`);
+        this.store.deck = cards.slice(4, cards.length);
+
+        // Initialize game data
         for (let i = 0; i < this.store.players.length; i++) {
             const player = this.store.players[i];
-
-            //TODO - store each player's cards in a neater way
-            this.store.players[i].cards = cards.slice(4 + 3 * i, 4 + 3 * (i + 1));
-
             const data = {
-                tableCards: this.store.tableCards,
-                playerHand: cards.slice(4 + 3 * i, 4 + 3 * (i + 1)),
                 scores: this.store.scores,
                 team: player.team,
                 isPlayerTurn: i === 0,
@@ -74,8 +68,7 @@ export default class ScopaGame {
             consola.info(data);
             this.emitDataToPlayer('start-round', data, player.id);
         }
-        this.store.deck = cards.slice(4 + 3 * this.store.players.length, cards.length);
-        consola.info(`[DECK AFTER DEAL: COUNT=[${this.store.deck.length}], CARDS=[${this.store.deck}]]`);
+        this.dealCards();
     }
 
     shuffle(array) {
@@ -94,6 +87,25 @@ export default class ScopaGame {
         }
 
         return array;
+    }
+
+    dealCards() {
+        consola.info(`[DECK BEFORE DEAL: COUNT=[${this.store.deck.length}], CARDS=[${this.store.deck}]]`);
+        for (let i = 0; i < this.store.players.length; i++) {
+            const player = this.store.players[i];
+            //TODO - store each player's cards in a neater way
+            this.store.players[i].cards = this.store.deck.slice(3 * i, 3 * (i + 1));
+
+            const data = {
+                tableCards: this.store.tableCards,
+                playerHand: this.store.deck.slice(3 * i, 3 * (i + 1)),
+                deckCount: this.store.deck.length - this.store.players.length * 3,
+            };
+            consola.info(data);
+            this.emitDataToPlayer('deal-cards', data, player.id);
+        }
+        this.store.deck = this.store.deck.slice(3 * this.store.players.length, this.store.deck.length);
+        consola.info(`[DECK AFTER DEAL: COUNT=[${this.store.deck.length}], CARDS=[${this.store.deck}]]`);
     }
 
     handlePlayerMove(playerClientId, data) {
@@ -190,26 +202,19 @@ export default class ScopaGame {
             // Round is complete - start new round
             this.updateScoresForNewRound();
             this.startGameRound();
+            // Reset round score
+            for (let i = 0; i < this.store.scores.length; i++) {
+                this.store.scores[i].roundScore = {
+                    cards: 0,
+                    setteBello: 0,
+                    dinare: 0,
+                    sevens: 0,
+                    scopa: 0,
+                };
+            }
         } else {
             // Deal players cards from deck
-            consola.info(`[DECK BEFORE DEAL: COUNT=[${this.store.deck.length}], CARDS=[${this.store.deck}]]`);
-            for (let i = 0; i < this.store.players.length; i++) {
-                const player = this.store.players[i];
-                //TODO - reafctor this dealing code to merge it with the dealing code at start of game
-                this.store.players[i].cards = this.store.deck.slice(3 * i, 3 * (i + 1));
-
-                const data = {
-                    tableCards: this.store.tableCards,
-                    playerHand: this.store.deck.slice(3 * i, 3 * (i + 1)),
-                    scores: this.store.scores,
-                    team: player.team,
-                    isPlayerTurn: i === 0,
-                };
-                consola.info(data);
-                this.emitDataToPlayer('start-round', data, player.id);
-            }
-            this.store.deck = this.store.deck.slice(3 * this.store.players.length, this.store.deck.length);
-            consola.info(`[DECK AFTEER DEAL: COUNT=[${this.store.deck.length}], CARDS=[${this.store.deck}]]`);
+            this.dealCards();
         }
     }
 
@@ -281,16 +286,5 @@ export default class ScopaGame {
         // Update team score
         this.store.scores[0].teamScore += totalScoreFirstTeam;
         this.store.scores[1].teamScore += totalScoreSecondTeam;
-
-        // Reset round score
-        for (let i = 0; i < this.store.scores.length; i++) {
-            this.store.scores[i].roundScore = {
-                cards: 0,
-                setteBello: 0,
-                dinare: 0,
-                sevens: 0,
-                scopa: 0,
-            };
-        }
     }
 }
