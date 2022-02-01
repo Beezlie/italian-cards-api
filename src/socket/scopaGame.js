@@ -117,15 +117,7 @@ export default class ScopaGame {
         consola.info(`[PLAYER ${player.id} MADE A MOVE]`);
         const nextPlayer = this.store.players[1];
 
-        this.rotatePlayerTurn();
-        this.updateRound(player, data.playerCard, data.cardsPickedUp);
-        const playersWithCards = this.store.players.filter(function (player) {
-            return player.cards.length !== 0;
-        });
-        if (playersWithCards.length === 0) {
-            this.redistributeCards();
-        }
-
+        this.completeTurn(player, data.playerCard, data.cardsPickedUp);
         if (nextPlayer.id === 'cpu') {
             this.handleCPUMove(nextPlayer);
         }
@@ -148,23 +140,41 @@ export default class ScopaGame {
         consola.info(`[CPU CARDS ${cpuPlayer.cards}]`);
         consola.info(`[AVAILABLE CARDS ${this.store.tableCards}]`);
         consola.info(`[CPU PLAYED ${bestMove.card} AND TOOK CARDS ${bestMove.matches}]`);
-        this.rotatePlayerTurn();
-        this.updateRound(cpuPlayer, bestMove.card, bestMove.matches);
-        const playersWithCards = this.store.players.filter(function (player) {
-            return player.cards.length !== 0;
-        });
-        if (playersWithCards.length === 0) {
-            this.redistributeCards();
-        }
+        this.completeTurn(cpuPlayer, bestMove.card, bestMove.matches);
     }
 
-    rotatePlayerTurn() {
+    completeTurn(player, cardPlayed, cardsTaken) {
+        // Rotate the player who's turn it is
         const lastTurnPlayer = this.store.players.shift();
         this.store.players.push(lastTurnPlayer);
         consola.info(`[NEXT PLAYER TURN: ${this.store.players[0].id}]`);
+
+        this.updateGameStateAfterTurn(player, cardPlayed, cardsTaken);
+        this.redistributeCardsIfNeeded();
+
+        if (this.store.deck.length === 0 && this.playerHandsAreEmpty()) {
+            // Round is complete - start new round
+            if (this.store.tableCards.length) {
+                // Give rest of table cards to last user who picked up cards
+                //TODO - this should have an associated animation
+                this.updateScore(this.store.lastPlayerToTakeCards.team, this.store.tableCards, this.store.tableCards);
+            }
+            this.updateScoresForNewRound();
+            this.startGameRound();
+            // Reset round score
+            for (let i = 0; i < this.store.scores.length; i++) {
+                this.store.scores[i].roundScore = {
+                    cards: 0,
+                    setteBello: 0,
+                    dinare: 0,
+                    sevens: 0,
+                    scopa: 0,
+                };
+            }
+        }
     }
 
-    updateRound(player, playerCard, cardsPickedUp) {
+    updateGameStateAfterTurn(player, playerCard, cardsPickedUp) {
         // Remove played card from player hand
         player.cards = player.cards.filter(card => card !== playerCard);
 
@@ -175,7 +185,7 @@ export default class ScopaGame {
             this.store.tableCards = this.store.tableCards.filter(function (card) {
                 return playerCards.indexOf(card) < 0;
             });
-            this.updateRoundScore(player.team, playerCards, this.store.tableCards);
+            this.updateScore(player.team, playerCards, this.store.tableCards);
         } else {
             // Player is adding a card from their hand to the table
             this.store.tableCards = [...this.store.tableCards, playerCard];
@@ -191,31 +201,23 @@ export default class ScopaGame {
         }
     }
 
-    redistributeCards() {
-        // Give rest of table cards to last user who picked up cards
-        // TODO - this needs to be cleaned/refactored since it doesn't really fit in with the method name
-        if (this.store.tableCards.length) {
-            this.updateRoundScore(this.store.lastPlayerToTakeCards.team, this.store.tableCards, this.store.tableCards);
+    redistributeCardsIfNeeded() {
+        // Only Re-deal cards once players' hands are empty
+        if (!this.playerHandsAreEmpty()) {
+            return;
         }
 
-        if (this.store.deck.length === 0) {
-            // Round is complete - start new round
-            this.updateScoresForNewRound();
-            this.startGameRound();
-            // Reset round score
-            for (let i = 0; i < this.store.scores.length; i++) {
-                this.store.scores[i].roundScore = {
-                    cards: 0,
-                    setteBello: 0,
-                    dinare: 0,
-                    sevens: 0,
-                    scopa: 0,
-                };
-            }
-        } else {
+        if (this.store.deck.length !== 0) {
             // Deal players cards from deck
             this.dealCards();
         }
+    }
+
+    playerHandsAreEmpty() {
+        const playersWithCards = this.store.players.filter(function (player) {
+            return player.cards.length !== 0;
+        });
+        return playersWithCards.length === 0;
     }
 
     emitDataToPlayer(eventName, data, playerId) {
@@ -225,7 +227,7 @@ export default class ScopaGame {
         }
     }
 
-    updateRoundScore(team, playerCards, remainingCards) {
+    updateScore(team, playerCards, remainingCards) {
         consola.info(`[UPDATING ROUND SCORE]`);
 
         let score = this.store.scores[team].roundScore;
