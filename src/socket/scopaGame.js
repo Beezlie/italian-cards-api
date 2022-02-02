@@ -56,6 +56,7 @@ export default class ScopaGame {
         this.shuffle(cards);
         this.store.tableCards = cards.slice(0, 4);
         this.store.deck = cards.slice(4, cards.length);
+        this.dealCards();
 
         // Initialize game data
         for (let i = 0; i < this.store.players.length; i++) {
@@ -64,11 +65,11 @@ export default class ScopaGame {
                 scores: this.store.scores,
                 team: player.team,
                 isPlayerTurn: i === 0,
+                deckCount: this.store.deck.length,
             };
             consola.info(data);
             this.emitDataToPlayer('start-round', data, player.id);
         }
-        this.dealCards();
     }
 
     shuffle(array) {
