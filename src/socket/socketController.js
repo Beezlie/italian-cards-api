@@ -33,7 +33,10 @@ const app = app => {
 		const room = new Room({ io: classicMode, socket, username, roomId, password, action, options });
 		const joinedRoom = await room.init(username);
 		if (joinedRoom) {
+			consola.info(`[PLAYER CONNECTED] ${username}`);
+			//TODO - need a better way of doing this
 			room.isReady();
+			room.startGame();
             room.sendChatMessage();
             room.listenForPlayerMoves();
 		}

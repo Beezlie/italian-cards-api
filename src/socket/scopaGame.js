@@ -128,7 +128,7 @@ export default class ScopaGame {
         consola.info(`[CPU TURN]`);
 
         //Sleep
-        var now = new Date().getTime();
+        let now = new Date().getTime();
         while (new Date().getTime() < now + 2000) { /* Do nothing */ }
 
         let bestMove = findHighestScoringMove(this.store.tableCards, cpuPlayer.cards);
