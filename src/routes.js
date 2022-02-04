@@ -20,6 +20,8 @@ const routes = route => {
     route.route('/users/:id').get(usersController.getOne).put(usersController.update).delete(usersController.delete);
 
     route.route('/game/getMatchingCardSets').post(gameController.getMatchingCardSets);
+
+    route.route('/game/getGameTypes').post(gameController.getGameTypes);
 };
 
 export default routes;
