@@ -21,7 +21,7 @@ const routes = route => {
 
     route.route('/game/getMatchingCardSets').post(gameController.getMatchingCardSets);
 
-    route.route('/game/getGameTypes').post(gameController.getGameTypes);
+    route.route('/game/getGameOptions').post(gameController.getGameOptions);
 };
 
 export default routes;

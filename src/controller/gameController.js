@@ -13,11 +13,23 @@ const gameController = {
         return response.json({ success: true, result });
     },
 
-    getGameTypes: (request, response) => {
+    getGameOptions: (request, response) => {
         const result = [
-            {key: 'scopa', label: 'Scopa'},
-            {key: 'scopone', label: 'Scopone'},
-            {key: 'briscola', label: 'Briscola'},
+            {
+                key: 'scopa', 
+                label: 'Scopa',
+                numPlayerOptions: [2, 4],
+            },
+            {
+                key: 'scopone', 
+                label: 'Scopone',
+                numPlayerOptions: [2, 4],
+            },
+            {
+                key: 'briscola', 
+                label: 'Briscola',
+                numPlayerOptions: [2, 4],
+            },
         ];
         return response.json({ success: true, result });
     },

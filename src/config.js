@@ -17,6 +17,7 @@ export const config = {
     IS_DEVELOPMENT: getDefault(process.env.NODE_ENV, 'development') !== 'production',
 
     DB_URL: getDefault(process.env.DB_URL, 'mongodb://localhost:27017/italian-cards-db'),
+    DB_PORT: process.env.DB_PORT ? Number.parseInt(process.env.DB_PORT, 10) : 27017,
     JWT_SECRET: getDefault(process.env.JWT_SECRET, 'REDACTED'),
     API_PORT: process.env.API_PORT ? Number.parseInt(process.env.API_PORT, 10) : 8080,
     SOCKET_PORT: process.env.SOCKET_PORT ? Number.parseInt(process.env.SOCKET_PORT, 10) : 65080,

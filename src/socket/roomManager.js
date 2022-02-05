@@ -159,12 +159,14 @@ export default class Room {
      * @access public
      */
     emitRoomUpdate() {
-        const playerData = this.store.clients.map(function (player) {
-            return { 
-                username: player.username, 
-                isReady: player.isReady, 
-            }
-        });
+        let playerData = [];
+        for (let i = 0; i < this.store.clients.length; i++) {
+            playerData.push( { 
+                username: this.store.clients[i].username, 
+                isReady: this.store.clients[i].isReady,
+                isHost: i === 0,
+            });
+        }
         const payload = {
             players: playerData,
             gameStarted: this.store.gameStarted,
