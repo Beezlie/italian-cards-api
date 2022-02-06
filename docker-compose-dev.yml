@@ -21,12 +21,12 @@ services:
       - mongo-vol:/data/db
     restart: on-failure
     ports:
-      - 27017:27017
+      - '${DB_PORT}:${DB_PORT}'
     networks:
       - italian-cards-network
 
 networks:
-  fifa-network:
+  italian-cards-network:
     driver: bridge
 volumes:
   redis-vol: {}

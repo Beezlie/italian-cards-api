@@ -29,6 +29,7 @@ const app = app => {
 
 	const classicMode = io.of('/classic-mode');
 	classicMode.use(verifySocket).on('connection', async socket => {
+		consola.info('Socket connection');
 		const { username, roomId, password, action, options } = socket.handshake.query;
 		const room = new Room({ io: classicMode, socket, username, roomId, password, action, options });
 		const joinedRoom = await room.init(username);

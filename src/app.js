@@ -10,7 +10,7 @@ import { handleError, authenticated } from './middlewares/index.js';
 import { config } from './config.js';
 
 const app = express();
-const server = new http.Server(app);
+const server = http.createServer(app);
 socket(server);
 
 app.use(cors({ origin: config.ALLOWLIST_HOSTS, credentials: true }));
@@ -23,11 +23,7 @@ app.use((error, _request, response, _) => {
     handleError(error, response);
 });
 
-app.listen(config.API_PORT, () => {
-    consola.success(`Api listening on port ${config.API_PORT}!`);
-});
-
-server.listen(config.SOCKET_PORT, () => {
-    consola.success(`Socket listening on port ${config.SOCKET_PORT}!`);
+server.listen(config.API_PORT, () => {
+    consola.success(`App listening on port ${config.API_PORT}!`);
     consola.info(`Api whitelisted for ${config.ALLOWLIST_HOSTS}`);
 });

@@ -1,0 +1,46 @@
+version: '3.8'
+services:
+  api:
+    container_name: api
+    image: api
+    restart: always
+    build: .
+    ports:
+      - '${APP_PORT}:${APP_PORT}'
+    networks:
+      - app-network
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    volumes:
+      - redis-vol:/var/lib/redis
+    restart: on-failure
+    ports:
+      - '${REDIS_PORT}:${REDIS_PORT}'
+    networks:
+      - app-network
+
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MONGO_INITDB_DATABASE=italian-cards-db
+    volumes:
+      - mongo-vol:/data/db
+    restart: on-failure
+    ports:
+      - '${DB_PORT}:${DB_PORT}'
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  redis-vol: {}
+  mongo-vol:
+    driver: local
